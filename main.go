@@ -15,11 +15,10 @@ type Link struct {
 	Bot  string `json:"bot"`
 }
 
-// In-memory map to store ID -> Link mappings
+// In-memory map to store ID -> Link mappings Basic For Now. We can customize with our requirements later. we will be using db for storing this link map
 var linkMap = make(map[string]Link)
-var mapMutex = &sync.RWMutex{} // Mutex for concurrent access to the map
+var mapMutex = &sync.RWMutex{}
 
-// Checks if the User-Agent indicates a bot
 func isBot(userAgent string) bool {
 	botIdentifiers := []string{
 		"bot", "crawl", "spider", "slurp", "facebook", "google", "bing", "yahoo",
@@ -41,7 +40,6 @@ func isBot(userAgent string) bool {
 func cloakedHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
-	// Retrieve the link data for the provided ID
 	mapMutex.RLock()
 	link, exists := linkMap[id]
 	mapMutex.RUnlock()
@@ -53,7 +51,7 @@ func cloakedHandler(w http.ResponseWriter, r *http.Request) {
 
 	userAgent := r.Header.Get("User-Agent")
 
-	// Redirect to the appropriate URL based on the User-Agent
+	// Redirect based on bot or not
 	if isBot(userAgent) {
 		http.Redirect(w, r, link.Bot, http.StatusFound)
 	} else {
@@ -80,7 +78,7 @@ func cloakedHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// Handler to update the ID -> {real, bot} mappings
+// Handle the POST request to update the link mappings which will save in DB later
 func updateLinkHandler(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
 
@@ -91,7 +89,6 @@ func updateLinkHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update the map with the new links
 	mapMutex.Lock()
 	linkMap[id] = link
 	mapMutex.Unlock()
@@ -101,15 +98,11 @@ func updateLinkHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	// Initialize the chi router
 	r := chi.NewRouter()
 
-	// Route to handle cloaking logic
 	r.Get("/{id}", cloakedHandler)
 
-	// Route to update the link mappings
 	r.Post("/update/{id}", updateLinkHandler)
 
-	// Start the server
 	http.ListenAndServe(":8080", r)
 }
