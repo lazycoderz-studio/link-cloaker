@@ -9,6 +9,8 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// all the business logic except make server up will move to specific packages
+
 // Structure to store real and bot URLs for each ID
 type Link struct {
 	Real string `json:"real"`
