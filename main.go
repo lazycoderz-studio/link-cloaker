@@ -2,9 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -101,10 +103,33 @@ func updateLinkHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	r := chi.NewRouter()
+	r.Use(loggingMiddleware)
 
 	r.Get("/{id}", cloakedHandler)
 
 	r.Post("/update/{id}", updateLinkHandler)
 
+	log.Println("Server started on port 8080")
+
 	http.ListenAndServe(":8080", r)
+}
+
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+
+		// Custom ResponseWriter to capture status code
+		rr := &responseRecorder{w, http.StatusOK}
+
+		// Call the next handler
+		next.ServeHTTP(rr, r)
+
+		// Log request details and response status code
+		log.Printf("%s %s %s %d %s", r.Method, r.RequestURI, r.Proto, rr.statusCode, time.Since(start))
+	})
+}
+
+type responseRecorder struct {
+	http.ResponseWriter
+	statusCode int
 }
